@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Job positions are not known yet, so job_id is left empty. Set them in
+         Project > Configuration > Pipeline Stages. -->
+    <record id="stage_preliminary_drafting" model="urbana.pipeline.stage">
+        <field name="name">Preliminary Drafting</field>
+        <field name="sequence">10</field>
+        <field name="min_hours">1.0</field>
+        <field name="export_ready" eval="False"/>
+    </record>
+    <record id="stage_ga_drawings" model="urbana.pipeline.stage">
+        <field name="name">GA Drawings</field>
+        <field name="sequence">20</field>
+        <field name="min_hours">1.0</field>
+        <field name="export_ready" eval="True"/>
+    </record>
+    <record id="stage_shop_drawings" model="urbana.pipeline.stage">
+        <field name="name">Shop Drawings</field>
+        <field name="sequence">30</field>
+        <field name="min_hours">1.0</field>
+        <field name="requires_approval" eval="True"/>
+        <field name="export_ready" eval="True"/>
+    </record>
+    <record id="stage_rendering" model="urbana.pipeline.stage">
+        <field name="name">Rendering</field>
+        <field name="sequence">40</field>
+        <field name="min_hours">1.0</field>
+        <field name="requires_approval" eval="True"/>
+        <field name="export_ready" eval="True"/>
+    </record>
+    <record id="stage_technical_review" model="urbana.pipeline.stage">
+        <field name="name">Technical Drawing Review</field>
+        <field name="sequence">50</field>
+        <field name="min_hours">1.0</field>
+        <field name="export_ready" eval="True"/>
+        <field name="is_return_target" eval="False"/>
+    </record>
+    <record id="stage_fabrication" model="urbana.pipeline.stage">
+        <field name="name">Fabrication</field>
+        <field name="sequence">60</field>
+        <field name="min_hours">0.0</field>
+        <field name="export_ready" eval="True"/>
+        <field name="is_return_target" eval="False"/>
+    </record>
+</odoo>
