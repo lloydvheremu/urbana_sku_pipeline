@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="urbana_handover_wizard_view_form" model="ir.ui.view">
+        <field name="name">urbana.handover.wizard.form</field>
+        <field name="model">urbana.handover.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Hand Over">
+                <group>
+                    <field name="project_id"/>
+                    <field name="notes" placeholder="Notes for the next stage"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Hand Over" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="urbana_send_back_wizard_view_form" model="ir.ui.view">
+        <field name="name">urbana.send.back.wizard.form</field>
+        <field name="model">urbana.send.back.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Send Back">
+                <field name="allowed_stage_ids" invisible="1"/>
+                <group>
+                    <field name="project_id"/>
+                    <field name="target_stage_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="reason" placeholder="Why is the SKU being sent back?"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Send Back" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
