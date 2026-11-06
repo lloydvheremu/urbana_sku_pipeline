@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="urbana_pipeline_stage_view_list" model="ir.ui.view">
+        <field name="name">urbana.pipeline.stage.list</field>
+        <field name="model">urbana.pipeline.stage</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="min_hours" widget="float_time"/>
+                <field name="requires_approval"/>
+                <field name="export_ready"/>
+                <field name="is_return_target"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="urbana_pipeline_stage_action" model="ir.actions.act_window">
+        <field name="name">Pipeline Stages</field>
+        <field name="res_model">urbana.pipeline.stage</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

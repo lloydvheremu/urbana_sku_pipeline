@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="urbana_task_view_form" model="ir.ui.view">
+        <field name="name">project.task.form.urbana</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="can_review" invisible="1"/>
+                <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                        groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
+                        invisible="not can_review"/>
+                <button name="action_request_changes" type="object" string="Request Changes"
+                        groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
+                        invisible="not pipeline_stage_id or is_approved"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group string="SKU Pipeline" invisible="not pipeline_stage_id">
+                    <group>
+                        <field name="pipeline_stage_id"/>
+                        <field name="output_url" widget="url"/>
+                        <field name="hubstaff_task_id" groups="project.group_project_manager"/>
+                    </group>
+                    <group>
+                        <field name="is_approved"/>
+                        <field name="approved_by"/>
+                        <field name="approved_date"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

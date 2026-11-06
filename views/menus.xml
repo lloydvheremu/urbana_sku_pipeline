@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_urbana_sku" name="SKUs" parent="project.menu_main_pm"
+              action="urbana_sku_action" sequence="2"/>
+    <menuitem id="menu_urbana_handovers" name="Handovers" parent="project.menu_main_pm"
+              action="urbana_sku_handover_action" sequence="3"/>
+    <menuitem id="menu_urbana_pipeline_stages" name="Pipeline Stages"
+              parent="project.menu_project_config"
+              action="urbana_pipeline_stage_action" sequence="30"
+              groups="project.group_project_manager"/>
+</odoo>

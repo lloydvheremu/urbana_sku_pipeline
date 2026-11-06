@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="urbana_sku_view_form" model="ir.ui.view">
+        <field name="name">urbana.sku.form</field>
+        <field name="model">project.project</field>
+        <field name="arch" type="xml">
+            <form string="SKU">
+                <field name="is_sku" invisible="1"/>
+                <field name="is_first_stage" invisible="1"/>
+                <field name="is_last_stage" invisible="1"/>
+                <field name="is_completed" invisible="1"/>
+                <header>
+                    <button name="action_open_handover_wizard" type="object" string="Hand Over"
+                            class="btn-primary"
+                            invisible="not id or is_last_stage"/>
+                    <button name="action_complete" type="object" string="Complete"
+                            class="btn-primary"
+                            invisible="not id or not is_last_stage or is_completed"/>
+                    <button name="action_open_send_back_wizard" type="object" string="Send Back"
+                            groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
+                            invisible="not id or is_first_stage"/>
+                    <field name="pipeline_stage_id" widget="statusbar" options="{'clickable': False}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="SKU name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sku_code"/>
+                            <field name="product_range"/>
+                            <field name="user_id" string="Project Manager"/>
+                        </group>
+                        <group>
+                            <field name="export_ready"/>
+                            <field name="cleanup_state"/>
+                            <field name="awaiting_approval"/>
+                            <field name="hubstaff_project_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Stage Tasks" name="stage_tasks">
+                            <field name="tasks">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="pipeline_stage_id" readonly="1"/>
+                                    <field name="user_ids" widget="many2many_avatar_user"/>
+                                    <field name="state" readonly="1"/>
+                                    <field name="is_approved" readonly="1"/>
+                                    <field name="effective_hours" readonly="1" widget="float_time"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Handovers" name="handovers">
+                            <field name="handover_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="from_stage_id"/>
+                                    <field name="to_stage_id"/>
+                                    <field name="from_employee_id"/>
+                                    <field name="to_employee_id"/>
+                                    <field name="is_send_back"/>
+                                    <field name="hours_snapshot" widget="float_time"/>
+                                    <field name="notes"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="urbana_sku_view_list" model="ir.ui.view">
+        <field name="name">urbana.sku.list</field>
+        <field name="model">project.project</field>
+        <field name="arch" type="xml">
+            <list string="SKUs">
+                <field name="sku_code"/>
+                <field name="name"/>
+                <field name="product_range"/>
+                <field name="pipeline_stage_id"/>
+                <field name="user_id" string="Project Manager" widget="many2one_avatar_user"/>
+                <field name="export_ready"/>
+                <field name="cleanup_state"/>
+                <field name="awaiting_approval"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="urbana_sku_view_kanban" model="ir.ui.view">
+        <field name="name">urbana.sku.kanban</field>
+        <field name="model">project.project</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="pipeline_stage_id" group_create="false"
+                    group_delete="false" group_edit="false" records_draggable="false"
+                    quick_create="false">
+                <field name="pipeline_stage_id"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="sku_code" class="fw-bold fs-5"/>
+                        <field name="name"/>
+                        <field name="product_range" class="text-muted"/>
+                        <footer>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="export_ready" widget="boolean"/>
+                            <field name="awaiting_approval" widget="boolean"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="urbana_sku_view_search" model="ir.ui.view">
+        <field name="name">urbana.sku.search</field>
+        <field name="model">project.project</field>
+        <field name="arch" type="xml">
+            <search string="SKUs">
+                <field name="sku_code"/>
+                <field name="name"/>
+                <field name="product_range"/>
+                <field name="pipeline_stage_id"/>
+                <filter name="ready_for_export" string="Ready for Export" domain="[('export_ready', '=', True)]"/>
+                <filter name="awaiting_approval" string="Awaiting Approval" domain="[('awaiting_approval', '=', True)]"/>
+                <filter name="my_skus" string="My SKUs" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="cleanup_open" string="Cleanup Not Done" domain="[('cleanup_state', '!=', 'done')]"/>
+                <group>
+                    <filter name="group_stage" string="Stage" context="{'group_by': 'pipeline_stage_id'}"/>
+                    <filter name="group_range" string="Product Range" context="{'group_by': 'product_range'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="urbana_sku_action" model="ir.actions.act_window">
+        <field name="name">SKUs</field>
+        <field name="res_model">project.project</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('is_sku', '=', True)]</field>
+        <field name="context">{'default_is_sku': True}</field>
+        <field name="search_view_id" ref="urbana_sku_view_search"/>
+    </record>
+    <record id="urbana_sku_action_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="urbana_sku_view_kanban"/>
+        <field name="act_window_id" ref="urbana_sku_action"/>
+    </record>
+    <record id="urbana_sku_action_list" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="urbana_sku_view_list"/>
+        <field name="act_window_id" ref="urbana_sku_action"/>
+    </record>
+    <record id="urbana_sku_action_form" model="ir.actions.act_window.view">
+        <field name="sequence">3</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="urbana_sku_view_form"/>
+        <field name="act_window_id" ref="urbana_sku_action"/>
+    </record>
+</odoo>
