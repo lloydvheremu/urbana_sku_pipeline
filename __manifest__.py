@@ -10,7 +10,7 @@ minimum number of hours and job position matching. Every hand over and send
 back is logged and posted as a project update. Hours are recorded as timesheet
 lines, entered manually for now and written by a Hubstaff sync later.
     """,
-    "author": "Urbana",
+    "author": "Lloyd Vheremu",
     "license": "LGPL-3",
     "depends": ["project", "hr", "hr_timesheet"],
     "data": [
