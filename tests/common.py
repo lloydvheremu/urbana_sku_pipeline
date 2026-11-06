@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from odoo import Command
 from odoo.tests import TransactionCase
 
@@ -63,3 +65,17 @@ class PipelineCase(TransactionCase):
     def _advance_to(self, sku, stage):
         while sku.pipeline_stage_id != stage:
             self._complete_stage(sku)
+
+    @contextmanager
+    def assertRaisesMessage(self, exception, pattern):
+        """assertRaises (which rolls back to a savepoint) plus a message check.
+        unittest's assertRaisesRegex does not roll back, so it can leave a
+        half-applied write behind."""
+        with self.assertRaises(exception) as cm:
+            yield
+        self.assertRegex(str(cm.exception), pattern)
+
+    def _last_handover(self, sku):
+        return self.env["urbana.sku.handover"].search(
+            [("project_id", "=", sku.id)], order="id desc", limit=1
+        )

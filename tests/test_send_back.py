@@ -17,7 +17,7 @@ class TestSendBack(PipelineCase):
 
     def test_a_reason_is_required(self):
         for reason in ("", "   ", False):
-            with self.assertRaisesRegex(UserError, "reason"):
+            with self.assertRaisesMessage(UserError, "reason"):
                 self._send_back(self.s_shop, reason)
         self.assertEqual(self.sku.pipeline_stage_id, self.s_review)
 
@@ -26,7 +26,7 @@ class TestSendBack(PipelineCase):
             with self.assertRaises(UserError):
                 self._send_back(target)
         self.s_ga.is_return_target = False
-        with self.assertRaisesRegex(UserError, "cannot be a send back target"):
+        with self.assertRaisesMessage(UserError, "cannot be a send back target"):
             self._send_back(self.s_ga)
 
     def test_send_back_resets_approvals_from_the_target_onward(self):
@@ -50,7 +50,7 @@ class TestSendBack(PipelineCase):
 
     def test_send_back_is_logged_with_the_reason(self):
         self._send_back(self.s_shop, "wrong dimension on door")
-        handover = self.sku.handover_ids[:1]
+        handover = self._last_handover(self.sku)
         self.assertTrue(handover.is_send_back)
         self.assertEqual(handover.reason, "wrong dimension on door")
         self.assertEqual((handover.from_stage_id, handover.to_stage_id), (self.s_review, self.s_shop))
@@ -74,12 +74,12 @@ class TestSendBack(PipelineCase):
 
     def test_after_a_send_back_the_sku_must_be_approved_again(self):
         self._send_back(self.s_shop)
-        with self.assertRaisesRegex(UserError, "approved"):
+        with self.assertRaisesMessage(UserError, "approved"):
             self.sku.action_advance()
         self._task(self.sku, self.s_shop).with_user(self.reviewer).action_approve()
         self.sku.action_advance()
         self.assertEqual(self.sku.pipeline_stage_id, self.s_render)
-        with self.assertRaisesRegex(UserError, "approved"):
+        with self.assertRaisesMessage(UserError, "approved"):
             self.sku.action_advance()
 
     def test_only_reviewers_and_managers_can_send_back(self):

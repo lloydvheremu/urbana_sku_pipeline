@@ -14,7 +14,7 @@ class TestAssignment(PipelineCase):
         sku = self._make_sku(assign=False)
         task = self._task(sku, self.s_prelim)
         self.worker.employee_id.job_id = other
-        with self.assertRaisesRegex(ValidationError, "job position"):
+        with self.assertRaisesMessage(ValidationError, "job position"):
             task.write({"user_ids": [Command.set(self.worker.ids)]})
         self.worker.employee_id.job_id = drafter
         task.write({"user_ids": [Command.set(self.worker.ids)]})
@@ -52,7 +52,7 @@ class TestAssignment(PipelineCase):
 
     def test_a_stage_without_approval_cannot_be_approved(self):
         sku = self._make_sku()
-        with self.assertRaisesRegex(UserError, "does not need approval"):
+        with self.assertRaisesMessage(UserError, "does not need approval"):
             self._task(sku, self.s_prelim).with_user(self.reviewer).action_approve()
 
     def test_request_changes_clears_an_approval(self):

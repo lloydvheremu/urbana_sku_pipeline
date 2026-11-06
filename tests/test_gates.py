@@ -41,11 +41,11 @@ class TestGates(PipelineCase):
 
     def test_advance_needs_minimum_hours(self):
         sku = self._make_sku()
-        with self.assertRaisesRegex(UserError, "hours"):
+        with self.assertRaisesMessage(UserError, "hours"):
             sku.action_advance()
         self.assertEqual(sku.pipeline_stage_id, self.s_prelim)
         self._log_hours(self._task(sku, self.s_prelim), 0.5)
-        with self.assertRaisesRegex(UserError, "hours"):
+        with self.assertRaisesMessage(UserError, "hours"):
             sku.action_advance()
         self._log_hours(self._task(sku, self.s_prelim), 0.5)
         sku.action_advance()
@@ -54,14 +54,14 @@ class TestGates(PipelineCase):
     def test_advance_needs_an_assignee_on_the_next_stage(self):
         sku = self._make_sku(assign=False)
         self._log_hours(self._task(sku, self.s_prelim))
-        with self.assertRaisesRegex(UserError, "Assign someone"):
+        with self.assertRaisesMessage(UserError, "Assign someone"):
             sku.action_advance()
 
     def test_advance_needs_approval_where_required(self):
         sku = self._make_sku()
         self._advance_to(sku, self.s_shop)
         self._log_hours(self._task(sku, self.s_shop))
-        with self.assertRaisesRegex(UserError, "approved"):
+        with self.assertRaisesMessage(UserError, "approved"):
             sku.action_advance()
         self._task(sku, self.s_shop).with_user(self.reviewer).action_approve()
         sku.action_advance()
@@ -78,7 +78,7 @@ class TestGates(PipelineCase):
     def test_write_cannot_move_without_hours(self):
         sku = self._make_sku()
         self._task(sku, self.s_prelim).write({"state": "1_done"})
-        with self.assertRaisesRegex(ValidationError, "hours"):
+        with self.assertRaisesMessage(ValidationError, "hours"):
             sku.write({"pipeline_stage_id": self.s_ga.id})
 
     def test_fabrication_is_blocked_without_approved_renders_and_shop_drawings(self):
@@ -88,7 +88,7 @@ class TestGates(PipelineCase):
         # break the approvals behind the gate, then try every route to Fabrication
         for stage in (self.s_shop, self.s_render):
             self._task(sku, stage).write({"is_approved": False})
-            with self.assertRaisesRegex(ValidationError, "approved"):
+            with self.assertRaisesMessage(ValidationError, "approved"):
                 sku.write({"pipeline_stage_id": self.s_fab.id})
             sku.invalidate_recordset()
             with self.assertRaises(ValidationError):
@@ -99,7 +99,7 @@ class TestGates(PipelineCase):
 
     def test_a_manager_cannot_move_the_stage_by_plain_write(self):
         sku = self._make_sku()
-        with self.assertRaisesRegex(UserError, "Hand Over"):
+        with self.assertRaisesMessage(UserError, "Hand Over"):
             sku.with_user(self.manager).write({"pipeline_stage_id": self.s_ga.id})
 
     def test_full_run_to_fabrication_and_completion(self):

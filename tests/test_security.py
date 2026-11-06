@@ -13,9 +13,9 @@ class TestSecurity(PipelineCase):
         self.handover = self.sku.handover_ids
 
     def test_handover_cannot_be_edited_or_deleted(self):
-        with self.assertRaisesRegex(UserError, "cannot be edited"):
+        with self.assertRaisesMessage(UserError, "cannot be edited"):
             self.handover.write({"notes": "changed"})
-        with self.assertRaisesRegex(UserError, "cannot be deleted"):
+        with self.assertRaisesMessage(UserError, "cannot be deleted"):
             self.handover.unlink()
 
     def test_generated_updates_cannot_be_edited_or_deleted(self):
@@ -68,7 +68,7 @@ class TestSecurity(PipelineCase):
             "project_id": self.sku.id, "notes": "from the wizard",
         })
         wizard.action_confirm()
-        self.assertEqual(self.sku.handover_ids[:1].notes, "from the wizard")
+        self.assertEqual(self._last_handover(self.sku).notes, "from the wizard")
 
     def test_a_sku_with_logged_hours_cannot_be_deleted(self):
         # Odoo protects timesheets, so such a SKU has to be archived instead.
