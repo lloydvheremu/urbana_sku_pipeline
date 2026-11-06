@@ -46,7 +46,6 @@ class TestSendBack(PipelineCase):
         self._send_back(self.s_render)
         self.assertTrue(self._task(self.sku, self.s_shop).is_approved)
         self.assertFalse(self._task(self.sku, self.s_render).is_approved)
-        self.assertFalse(self.sku.awaiting_approval and False)
         self.assertTrue(self.sku.awaiting_approval)
 
     def test_send_back_is_logged_with_the_reason(self):
@@ -90,7 +89,8 @@ class TestSendBack(PipelineCase):
         self.assertEqual(self.sku.pipeline_stage_id, self.s_shop)
 
     def test_only_a_manager_can_send_back_from_the_last_stage(self):
-        self.sku.action_advance()  # review -> fabrication (hours already met)
+        self._log_hours(self._task(self.sku, self.s_review))
+        self.sku.action_advance()
         self.assertEqual(self.sku.pipeline_stage_id, self.s_fab)
         with self.assertRaises(AccessError):
             self._send_back(self.s_render, user=self.reviewer)

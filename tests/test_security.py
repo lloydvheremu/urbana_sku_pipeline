@@ -34,6 +34,8 @@ class TestSecurity(PipelineCase):
 
     def test_deleting_a_sku_removes_its_history(self):
         handover_id = self.handover.id
+        # Odoo refuses to delete tasks that have timesheets, so clear them first.
+        self.env["account.analytic.line"].search([("project_id", "=", self.sku.id)]).unlink()
         self.sku.unlink()
         self.assertFalse(self.env["urbana.sku.handover"].browse(handover_id).exists())
 
@@ -67,3 +69,18 @@ class TestSecurity(PipelineCase):
         })
         wizard.action_confirm()
         self.assertEqual(self.sku.handover_ids[:1].notes, "from the wizard")
+
+    def test_a_sku_with_logged_hours_cannot_be_deleted(self):
+        # Odoo protects timesheets, so such a SKU has to be archived instead.
+        self._log_hours(self._task(self.sku, self.s_ga))
+        with self.assertRaises(Exception):
+            self.sku.unlink()
+
+    def test_assignee_can_update_cleanup_state_but_not_write_the_project(self):
+        sku = self.sku.with_user(self.worker)
+        sku.action_cleanup_start()
+        self.assertEqual(self.sku.cleanup_state, "in_progress")
+        sku.action_cleanup_done()
+        self.assertEqual(self.sku.cleanup_state, "done")
+        with self.assertRaises(Exception):
+            sku.write({"cleanup_state": "not_started"})

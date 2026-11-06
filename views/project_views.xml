@@ -16,6 +16,10 @@
                     <button name="action_complete" type="object" string="Complete"
                             class="btn-primary"
                             invisible="not id or not is_last_stage or is_completed"/>
+                    <button name="action_cleanup_start" type="object" string="Start Cleanup"
+                            invisible="not id or cleanup_state != 'not_started'"/>
+                    <button name="action_cleanup_done" type="object" string="Cleanup Done"
+                            invisible="not id or cleanup_state != 'in_progress'"/>
                     <button name="action_open_send_back_wizard" type="object" string="Send Back"
                             groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
                             invisible="not id or is_first_stage"/>
@@ -33,7 +37,7 @@
                         </group>
                         <group>
                             <field name="export_ready"/>
-                            <field name="cleanup_state"/>
+                            <field name="cleanup_state" readonly="1"/>
                             <field name="awaiting_approval"/>
                             <field name="hubstaff_project_id"/>
                         </group>

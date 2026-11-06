@@ -1,6 +1,6 @@
 from markupsafe import Markup
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import float_compare
 
@@ -191,6 +191,7 @@ class ProjectProject(models.Model):
                     "name": f"{project._label()} - {stage.name}",
                     "project_id": project.id,
                     "pipeline_stage_id": stage.id,
+                    "user_ids": [Command.clear()],  # do not default to the creator
                     "state": "01_in_progress" if stage == project.pipeline_stage_id else "04_waiting_normal",
                 })
         self.env["project.task"].with_context(**{INTERNAL: True}).create(vals_list)
@@ -258,9 +259,11 @@ class ProjectProject(models.Model):
                 _("Assign someone to the %(stage)s task first.", stage=next_stage.name)
             )
 
+        # Project users cannot write projects, so after our own permission
+        # checks the stage move runs privileged.
         current_task.write({"state": DONE})
         next_task.write({"state": "01_in_progress"})
-        self.with_context(**{INTERNAL: True}).write({"pipeline_stage_id": next_stage.id})
+        self.sudo().with_context(**{INTERNAL: True}).write({"pipeline_stage_id": next_stage.id})
         self.env["urbana.sku.handover"]._log(self, current_task, next_task, notes=notes)
         for user in next_task.user_ids:
             next_task.activity_schedule(
@@ -270,6 +273,18 @@ class ProjectProject(models.Model):
                 user_id=user.id,
             )
         return True
+
+    def _set_cleanup_state(self, state):
+        self.ensure_one()
+        self._check_can_move(self._task_for(self.pipeline_stage_id))
+        self.sudo().write({"cleanup_state": state})
+        return True
+
+    def action_cleanup_start(self):
+        return self._set_cleanup_state("in_progress")
+
+    def action_cleanup_done(self):
+        return self._set_cleanup_state("done")
 
     def action_complete(self):
         """Mark the last stage done."""
@@ -322,7 +337,7 @@ class ProjectProject(models.Model):
                 "approved_date": False,
                 "state": "02_changes_requested" if stage == target else "04_waiting_normal",
             })
-        self.with_context(**{INTERNAL: True}).write({"pipeline_stage_id": target.id})
+        self.sudo().with_context(**{INTERNAL: True}).write({"pipeline_stage_id": target.id})
         self.env["urbana.sku.handover"]._log(
             self, current_task, target_task, reason=reason, is_send_back=True
         )

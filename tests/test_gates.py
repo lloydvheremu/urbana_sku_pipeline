@@ -84,16 +84,18 @@ class TestGates(PipelineCase):
     def test_fabrication_is_blocked_without_approved_renders_and_shop_drawings(self):
         sku = self._make_sku()
         self._advance_to(sku, self.s_review)
+        self._log_hours(self._task(sku, self.s_review))
         # break the approvals behind the gate, then try every route to Fabrication
         for stage in (self.s_shop, self.s_render):
             self._task(sku, stage).write({"is_approved": False})
             with self.assertRaisesRegex(ValidationError, "approved"):
                 sku.write({"pipeline_stage_id": self.s_fab.id})
+            sku.invalidate_recordset()
             with self.assertRaises(ValidationError):
-                self._log_hours(self._task(sku, self.s_review))
                 sku.action_advance()
+            sku.invalidate_recordset()
+            self.assertEqual(sku.pipeline_stage_id, self.s_review)
             self._task(sku, stage).write({"is_approved": True})
-        self.assertEqual(sku.pipeline_stage_id, self.s_review)
 
     def test_a_manager_cannot_move_the_stage_by_plain_write(self):
         sku = self._make_sku()
