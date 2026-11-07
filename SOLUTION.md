@@ -32,8 +32,11 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 4. Reviewers approve stages that need it. Approval is only possible for the stage the SKU is currently in.
 5. **Hand Over** checks approval, minimum hours and that the next stage has an assignee. It closes the task, moves the stage, writes a handover record, posts a project update and schedules an activity for the next assignee.
 6. **Send Back** (reviewers and managers) takes an earlier stage and a mandatory reason. It reopens the target task, resets approvals from the target onward, writes a handover flagged as a send back and posts an at-risk update. The SKU then has to go forward through every gate again.
-7. **Request Changes** (reviewers and managers, on the current stage's task) asks for a reason and is now a one stage send back: the task goes to Waiting, the previous stage's task to Changes requested, approvals are cleared, the SKU returns to the previous stage and its owner gets a to-do. It reuses `action_send_back`, so the integrity rule is untouched. On the first stage there is nothing earlier, so only that task is reopened and an at-risk project update is logged (no handover record, no to-do).
-8. **Task buttons**: Hand Over and Send Back also appear on the current stage's task (not done), calling the same project methods as the SKU form. Send Back keeps its reviewer/manager rule.
+7. **Send Back from the task.** On the current stage's task (not done), reviewers and managers get one **Send Back** button. Its wizard asks for a mandatory reason and a target stage. The target defaults to the previous stage, and any earlier stage marked as a return target can be chosen. Confirming goes through `action_send_back`, so the integrity rule is untouched and the task states, approval resets, handover record and at-risk update behave exactly as in item 6.
+8. **Who is told.** The target stage's assignees get a to-do on its task. An activity is also raised on the SKU project for those assignees, or for the project manager when nobody is assigned. After confirming, the wizard shows a **View Update** button that opens the project update it created.
+9. **First stage.** There is no earlier stage to return to, so the target field is hidden. Only that task is reopened (Changes requested, approval cleared), a chatter line is posted and an at-risk project update is logged. No handover record or to-do is created.
+10. **Hand Over from the task.** The current stage's task also has a Hand Over button, calling the same project method as the SKU form.
+11. **Navigation.** SKUs have their own app (SKUs, Pipeline, Handovers, Configuration). Pipeline is a kanban of every stage task grouped by task state. The standard Projects views hide SKUs by default (a removable "Hide SKUs" filter). A Timesheets tab on the SKU form is shown only to admins in developer mode.
 
 ## 3. Data model
 
@@ -46,7 +49,8 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 | `project.update` (extended) | `handover_id` links the automatic update to its handover |
 | `account.analytic.line` (extended) | `hubstaff_entry_id` (unique) and `source` |
 | `hr.employee` (extended) | `hubstaff_user_id` |
-| `urbana.handover.wizard`, `urbana.send.back.wizard` | Capture notes and the send back target and reason |
+| `urbana.handover.wizard`, `urbana.send.back.wizard` | Capture notes and the send back target and reason (SKU form) |
+| `urbana.request.changes.wizard` | Send Back from a task: reason, target stage, and a link to the update it created |
 
 ## 4. Assumptions
 
@@ -71,6 +75,7 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 | Separate custom SKU model | Loses the project manager, chatter, updates and timesheets that `project` provides |
 | Gates only in button methods | Bypassed by imports and ORM writes. The constraint is the guarantee |
 | Native task stages as the pipeline | Users can drag cards past a gate. The pipeline position lives on the project instead |
+| Separate Request Changes and Send Back on the task | They did almost the same thing, so there is one Send Back. The reviewer picks the stage (usually the previous one) and the integrity rule still decides what is allowed |
 
 ## 6. Hubstaff integration (designed, not built)
 
@@ -122,6 +127,7 @@ What the tests cover:
 - **Send back:** reason required, valid targets only, approvals reset from the target onward and kept before it, the log and the at-risk update, hours kept, gates apply again afterwards, re-approval required, who may send back.
 - **Assignment:** job position match, protected fields, who may approve and hand over.
 - **Security:** handovers and generated updates are immutable, wizards, configuration access, cleanup buttons.
+- **Task Send Back** (`tests/test_request_changes.py`): default and allowed targets, reason required, non-reviewers blocked, current stage only, non-return-target error, first stage behaviour, project activity (assignee and project manager fallback), the View Update link, gates applying again after the drafter hands over, and Hand Over delegating to the project.
 - **Hubstaff fields:** duplicate entry rejected, synced hours count toward the minimum.
 
 Sanity check: disabling the integrity constraint makes five of these tests fail.
