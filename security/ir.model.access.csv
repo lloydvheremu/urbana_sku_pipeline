@@ -5,3 +5,5 @@ access_urbana_sku_handover_user,urbana.sku.handover.user,model_urbana_sku_handov
 access_urbana_handover_wizard_user,urbana.handover.wizard.user,model_urbana_handover_wizard,project.group_project_user,1,1,1,1
 access_urbana_send_back_wizard_reviewer,urbana.send.back.wizard.reviewer,model_urbana_send_back_wizard,group_urbana_reviewer,1,1,1,1
 access_urbana_send_back_wizard_manager,urbana.send.back.wizard.manager,model_urbana_send_back_wizard,project.group_project_manager,1,1,1,1
+access_urbana_request_changes_wizard_reviewer,urbana.request.changes.wizard.reviewer,model_urbana_request_changes_wizard,group_urbana_reviewer,1,1,1,1
+access_urbana_request_changes_wizard_manager,urbana.request.changes.wizard.manager,model_urbana_request_changes_wizard,project.group_project_manager,1,1,1,1

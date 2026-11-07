@@ -60,9 +60,10 @@ class TestAssignment(PipelineCase):
         self._advance_to(sku, self.s_shop)
         task = self._task(sku, self.s_shop)
         task.with_user(self.reviewer).action_approve()
-        task.with_user(self.reviewer).action_request_changes()
+        task.with_user(self.reviewer)._request_changes("dimensions off")
         self.assertFalse(task.is_approved)
-        self.assertEqual(task.state, "02_changes_requested")
+        self.assertEqual(task.state, "04_waiting_normal")  # sent back one stage
+        self.assertEqual(sku.pipeline_stage_id, self.s_ga)
 
     def test_only_the_assignee_or_a_reviewer_can_hand_over(self):
         sku = self._make_sku()

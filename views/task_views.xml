@@ -7,6 +7,15 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <field name="can_review" invisible="1"/>
+                <field name="is_current_stage" invisible="1"/>
+                <field name="project_is_first_stage" invisible="1"/>
+                <field name="project_is_last_stage" invisible="1"/>
+                <button name="action_open_handover_wizard" type="object" string="Hand Over"
+                        class="btn-primary"
+                        invisible="not is_current_stage or state == '1_done' or project_is_last_stage"/>
+                <button name="action_open_send_back_wizard" type="object" string="Send Back"
+                        groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
+                        invisible="not is_current_stage or state == '1_done' or project_is_first_stage"/>
                 <button name="action_approve" type="object" string="Approve" class="btn-primary"
                         groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
                         invisible="not can_review"/>

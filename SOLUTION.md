@@ -32,6 +32,8 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 4. Reviewers approve stages that need it. Approval is only possible for the stage the SKU is currently in.
 5. **Hand Over** checks approval, minimum hours and that the next stage has an assignee. It closes the task, moves the stage, writes a handover record, posts a project update and schedules an activity for the next assignee.
 6. **Send Back** (reviewers and managers) takes an earlier stage and a mandatory reason. It reopens the target task, resets approvals from the target onward, writes a handover flagged as a send back and posts an at-risk update. The SKU then has to go forward through every gate again.
+7. **Request Changes** (reviewers and managers, on the current stage's task) asks for a reason and is now a one stage send back: the task goes to Waiting, the previous stage's task to Changes requested, approvals are cleared, the SKU returns to the previous stage and its owner gets a to-do. It reuses `action_send_back`, so the integrity rule is untouched. On the first stage there is nothing earlier, so only that task is reopened and an at-risk project update is logged (no handover record, no to-do).
+8. **Task buttons**: Hand Over and Send Back also appear on the current stage's task (not done), calling the same project methods as the SKU form. Send Back keeps its reviewer/manager rule.
 
 ## 3. Data model
 

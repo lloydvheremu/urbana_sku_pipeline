@@ -42,3 +42,16 @@ class UrbanaSendBackWizard(models.TransientModel):
         self.ensure_one()
         self.project_id.action_send_back(self.target_stage_id, self.reason)
         return {"type": "ir.actions.act_window_close"}
+
+
+class UrbanaRequestChangesWizard(models.TransientModel):
+    _name = "urbana.request.changes.wizard"
+    _description = "Request Changes on a Stage"
+
+    task_id = fields.Many2one("project.task", required=True, readonly=True)
+    reason = fields.Text(required=True)
+
+    def action_confirm(self):
+        self.ensure_one()
+        self.task_id._request_changes(self.reason)
+        return {"type": "ir.actions.act_window_close"}

@@ -1,3 +1,5 @@
+from markupsafe import Markup
+
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
@@ -23,6 +25,24 @@ class ProjectTask(models.Model):
     output_url = fields.Char(string="Output Link", help="Link to what this stage produced.")
     hubstaff_task_id = fields.Char(string="Hubstaff Task ID", copy=False, index=True)
     can_review = fields.Boolean(compute="_compute_can_review")
+    is_current_stage = fields.Boolean(compute="_compute_is_current_stage")
+    project_is_first_stage = fields.Boolean(related="project_id.is_first_stage")
+    project_is_last_stage = fields.Boolean(related="project_id.is_last_stage")
+
+    @api.depends("pipeline_stage_id", "project_id.pipeline_stage_id")
+    def _compute_is_current_stage(self):
+        for task in self:
+            task.is_current_stage = bool(
+                task.pipeline_stage_id and task.project_id.pipeline_stage_id == task.pipeline_stage_id
+            )
+
+    def action_open_handover_wizard(self):
+        self.ensure_one()
+        return self.project_id.action_open_handover_wizard()
+
+    def action_open_send_back_wizard(self):
+        self.ensure_one()
+        return self.project_id.action_open_send_back_wizard()
 
     @api.depends("pipeline_stage_id", "is_approved", "project_id.pipeline_stage_id")
     def _compute_can_review(self):
@@ -87,15 +107,61 @@ class ProjectTask(models.Model):
         return True
 
     def action_request_changes(self):
+        """Ask for the reason, then send the work back one stage."""
+        self.ensure_one()
         self._check_reviewer()
-        for task in self:
-            if task.project_id.pipeline_stage_id != task.pipeline_stage_id:
-                raise UserError(_("Only the stage the SKU is currently in can be reviewed."))
-            task.with_context(**{INTERNAL: True}).write({
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Request Changes"),
+            "res_model": "urbana.request.changes.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_task_id": self.id},
+        }
+
+    def _request_changes(self, reason):
+        """Reject this stage's work. Later stages: a one stage send back through
+        action_send_back. First stage: nothing earlier exists, so only this task
+        is reopened and an at-risk update is logged."""
+        self.ensure_one()
+        self._check_reviewer()
+        project = self.project_id
+        if not self.pipeline_stage_id or project.pipeline_stage_id != self.pipeline_stage_id:
+            raise UserError(_("Only the stage the SKU is currently in can be reviewed."))
+        reason = (reason or "").strip()
+        if not reason:
+            raise UserError(_("A reason is required to request changes."))
+        stages = project._pipeline_stages()
+        if self.pipeline_stage_id == stages[:1]:
+            self.with_context(**{INTERNAL: True}).write({
                 "is_approved": False,
                 "approved_by": False,
                 "approved_date": False,
                 "state": "02_changes_requested",
             })
-            task.message_post(body=_("Changes requested."))
+            self.message_post(body=_("Changes requested."))
+            project._post_update(
+                _("%(sku)s: changes requested on %(stage)s", sku=project._label(),
+                  stage=self.pipeline_stage_id.name),
+                "at_risk",
+                Markup("<p>{}</p><p><b>{}</b> {}</p>").format(
+                    _("%(who)s requested changes on %(stage)s.",
+                      who=self.env.user.name, stage=self.pipeline_stage_id.name),
+                    _("Reason:"), reason,
+                ),
+            )
+            return True
+        previous = stages[stages.ids.index(self.pipeline_stage_id.id) - 1]
+        project.action_send_back(previous, reason)
+        # Also raise an activity on the SKU itself, for the previous stage's
+        # assignees, or the project manager when nobody is assigned.
+        assignees = project._task_for(previous).user_ids or project.user_id
+        # Reviewers may not write projects; the activity is created privileged.
+        for user in assignees:
+            project.sudo().activity_schedule(
+                "mail.mail_activity_data_todo",
+                summary=_("Changes requested on %(stage)s", stage=self.pipeline_stage_id.name),
+                note=reason,
+                user_id=user.id,
+            )
         return True
