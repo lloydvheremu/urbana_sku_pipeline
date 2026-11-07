@@ -69,6 +69,11 @@
                                 </list>
                             </field>
                         </page>
+                        <!-- Odoo ANDs base.group_no_one with other groups: admins in developer mode -->
+                        <page string="Timesheets" name="timesheets"
+                              groups="base.group_system,base.group_no_one">
+                            <field name="timesheet_ids"/>
+                        </page>
                     </notebook>
                 </sheet>
                 <chatter/>
@@ -126,6 +131,7 @@
                 <field name="name"/>
                 <field name="product_range"/>
                 <field name="pipeline_stage_id"/>
+                <filter name="sku_only" string="SKUs" domain="[('is_sku', '=', True)]"/>
                 <filter name="ready_for_export" string="Ready for Export" domain="[('export_ready', '=', True)]"/>
                 <filter name="awaiting_approval" string="Awaiting Approval" domain="[('awaiting_approval', '=', True)]"/>
                 <filter name="my_skus" string="My SKUs" domain="[('user_id', '=', uid)]"/>
@@ -144,7 +150,7 @@
         <field name="res_model">project.project</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="domain">[('is_sku', '=', True)]</field>
-        <field name="context">{'default_is_sku': True}</field>
+        <field name="context">{'default_is_sku': True, 'search_default_sku_only': True}</field>
         <field name="search_view_id" ref="urbana_sku_view_search"/>
     </record>
     <record id="urbana_sku_action_kanban" model="ir.actions.act_window.view">
@@ -164,5 +170,30 @@
         <field name="view_mode">form</field>
         <field name="view_id" ref="urbana_sku_view_form"/>
         <field name="act_window_id" ref="urbana_sku_action"/>
+    </record>
+
+    <!-- Standard Projects: hide SKUs by default, removable from the search bar -->
+    <record id="urbana_project_view_search_inherit" model="ir.ui.view">
+        <field name="name">project.project.select.urbana</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <filter name="own_projects" position="before">
+                <filter string="Hide SKUs" name="hide_skus" domain="[('is_sku', '=', False)]"/>
+                <separator/>
+            </filter>
+        </field>
+    </record>
+    <record id="project.open_view_project_all" model="ir.actions.act_window">
+        <field name="context">{'display_milestone_deadline': True, 'search_default_hide_skus': True}</field>
+    </record>
+    <record id="project.open_view_project_all_group_stage" model="ir.actions.act_window">
+        <field name="context">{'display_milestone_deadline': True, 'search_default_hide_skus': True}</field>
+    </record>
+    <record id="project.open_view_project_all_config" model="ir.actions.act_window">
+        <field name="context">{'display_milestone_deadline': True, 'search_default_hide_skus': True}</field>
+    </record>
+    <record id="project.open_view_project_all_config_group_stage" model="ir.actions.act_window">
+        <field name="context">{'display_milestone_deadline': True, 'search_default_hide_skus': True}</field>
     </record>
 </odoo>

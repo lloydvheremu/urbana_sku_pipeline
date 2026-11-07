@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_urbana_sku" name="SKUs" parent="project.menu_main_pm"
-              action="urbana_sku_action" sequence="2"/>
-    <menuitem id="menu_urbana_handovers" name="Handovers" parent="project.menu_main_pm"
+    <!-- Pipeline: every stage task of every SKU, kanban by task state -->
+    <record id="urbana_pipeline_task_action" model="ir.actions.act_window">
+        <field name="name">Pipeline</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('pipeline_stage_id', '!=', False)]</field>
+        <field name="context">{'group_by': ['state'], 'search_default_open_tasks': 1}</field>
+        <field name="search_view_id" ref="project.view_task_search_form"/>
+    </record>
+
+    <!-- SKUs get their own app on the dashboard -->
+    <menuitem id="menu_urbana_root" name="SKUs"
+              web_icon="urbana_sku_pipeline,static/description/icon.svg"
+              groups="project.group_project_user" sequence="46"/>
+    <menuitem id="menu_urbana_sku" name="SKUs" parent="menu_urbana_root"
+              action="urbana_sku_action" sequence="1"/>
+    <menuitem id="menu_urbana_pipeline" name="Pipeline" parent="menu_urbana_root"
+              action="urbana_pipeline_task_action" sequence="2"/>
+    <menuitem id="menu_urbana_handovers" name="Handovers" parent="menu_urbana_root"
               action="urbana_sku_handover_action" sequence="3"/>
+    <menuitem id="menu_urbana_config" name="Configuration" parent="menu_urbana_root"
+              groups="project.group_project_manager" sequence="90"/>
     <menuitem id="menu_urbana_pipeline_stages" name="Pipeline Stages"
-              parent="project.menu_project_config"
-              action="urbana_pipeline_stage_action" sequence="30"
-              groups="project.group_project_manager"/>
+              parent="menu_urbana_config"
+              action="urbana_pipeline_stage_action" sequence="10"/>
 </odoo>
