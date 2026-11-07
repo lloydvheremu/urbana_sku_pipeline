@@ -102,6 +102,15 @@ class TestRequestChanges(PipelineCase):
         self.assertIn("bad model", new.description)
         self.assertFalse(prelim.activity_ids)
 
+    def test_wizard_links_to_the_update_on_the_first_stage(self):
+        task = self._task(self.sku, self.s_prelim)
+        wizard = self.env["urbana.request.changes.wizard"].with_user(self.reviewer).create(
+            {"task_id": task.id, "reason": "bad model"}
+        )
+        wizard.action_confirm()
+        self.assertEqual(wizard.update_id.project_id, self.sku)
+        self.assertEqual(wizard.update_id.status, "at_risk")
+
     def test_gates_apply_again_after_a_request(self):
         self._advance_to(self.sku, self.s_ga)
         self._request(self.s_ga)
@@ -122,17 +131,39 @@ class TestRequestChanges(PipelineCase):
         wizard = self.env["urbana.request.changes.wizard"].with_user(self.reviewer).create(
             {"task_id": task.id, "reason": "via wizard"}
         )
-        wizard.action_confirm()
+        again = wizard.action_confirm()
         self.assertEqual(self.sku.pipeline_stage_id, self.s_prelim)
+        self.assertEqual(again["res_id"], wizard.id)
+        self.assertEqual(wizard.update_id, self._last_handover(self.sku).update_id)
+        view = wizard.action_view_update()
+        self.assertEqual((view["res_model"], view["res_id"]), ("project.update", wizard.update_id.id))
 
 
 @tagged("post_install", "-at_install")
 class TestTaskButtons(PipelineCase):
-    def test_task_buttons_delegate_to_the_project(self):
+    def test_hand_over_button_delegates_to_the_project(self):
         sku = self._make_sku()
         task = self._task(sku, self.s_prelim)
-        for method in ("action_open_handover_wizard", "action_open_send_back_wizard"):
-            self.assertEqual(getattr(task, method)(), getattr(sku, method)())
+        self.assertEqual(task.action_open_handover_wizard(), sku.action_open_handover_wizard())
+
+    def test_send_back_wizard_defaults_to_the_previous_stage_and_allows_earlier_ones(self):
+        sku = self._make_sku()
+        self._advance_to(sku, self.s_shop)
+        task = self._task(sku, self.s_shop).with_user(self.reviewer)
+        Wizard = self.env["urbana.request.changes.wizard"].with_user(self.reviewer)
+        wizard = Wizard.create({"task_id": task.id, "reason": "r"})
+        self.assertEqual(wizard.target_stage_id, self.s_ga)
+        self.assertEqual(wizard.allowed_stage_ids, self.s_prelim | self.s_ga)
+        wizard.target_stage_id = self.s_prelim
+        wizard.action_confirm()
+        self.assertEqual(sku.pipeline_stage_id, self.s_prelim)
+
+    def test_send_back_wizard_has_no_target_on_the_first_stage(self):
+        sku = self._make_sku()
+        wizard = self.env["urbana.request.changes.wizard"].with_user(self.reviewer).create(
+            {"task_id": self._task(sku, self.s_prelim).id, "reason": "r"}
+        )
+        self.assertFalse(wizard.allowed_stage_ids or wizard.target_stage_id)
 
     def test_only_the_current_stage_task_is_flagged(self):
         sku = self._make_sku()
@@ -141,4 +172,3 @@ class TestTaskButtons(PipelineCase):
         self._complete_stage(sku)
         self.assertFalse(self._task(sku, self.s_prelim).is_current_stage)
         self.assertTrue(self._task(sku, self.s_ga).is_current_stage)
-        self.assertTrue(self._task(sku, self.s_ga).project_is_first_stage is False)

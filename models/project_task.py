@@ -26,7 +26,6 @@ class ProjectTask(models.Model):
     hubstaff_task_id = fields.Char(string="Hubstaff Task ID", copy=False, index=True)
     can_review = fields.Boolean(compute="_compute_can_review")
     is_current_stage = fields.Boolean(compute="_compute_is_current_stage")
-    project_is_first_stage = fields.Boolean(related="project_id.is_first_stage")
     project_is_last_stage = fields.Boolean(related="project_id.is_last_stage")
 
     @api.depends("pipeline_stage_id", "project_id.pipeline_stage_id")
@@ -39,20 +38,6 @@ class ProjectTask(models.Model):
     def action_open_handover_wizard(self):
         self.ensure_one()
         return self.project_id.action_open_handover_wizard()
-
-    def action_open_send_back_wizard(self):
-        self.ensure_one()
-        return self.project_id.action_open_send_back_wizard()
-
-    @api.depends("pipeline_stage_id", "is_approved", "project_id.pipeline_stage_id")
-    def _compute_can_review(self):
-        for task in self:
-            stage = task.pipeline_stage_id
-            task.can_review = bool(
-                stage.requires_approval
-                and not task.is_approved
-                and task.project_id.pipeline_stage_id == stage
-            )
 
     @api.constrains("user_ids", "pipeline_stage_id")
     def _check_assignee_job(self):
@@ -107,7 +92,7 @@ class ProjectTask(models.Model):
         return True
 
     def action_request_changes(self):
-        """Ask for the reason, then send the work back one stage."""
+        """Send Back: ask for the reason (and the stage, defaulting to the previous one)."""
         self.ensure_one()
         self._check_reviewer()
         return {
@@ -119,10 +104,10 @@ class ProjectTask(models.Model):
             "context": {"default_task_id": self.id},
         }
 
-    def _request_changes(self, reason):
-        """Reject this stage's work. Later stages: a one stage send back through
-        action_send_back. First stage: nothing earlier exists, so only this task
-        is reopened and an at-risk update is logged."""
+    def _request_changes(self, reason, target=None):
+        """Reject this stage's work. Later stages: a send back through
+        action_send_back, to `target` or by default the previous stage. First stage: nothing earlier exists, so only this task
+        is reopened and an at-risk update is logged. Returns that project.update."""
         self.ensure_one()
         self._check_reviewer()
         project = self.project_id
@@ -140,7 +125,7 @@ class ProjectTask(models.Model):
                 "state": "02_changes_requested",
             })
             self.message_post(body=_("Changes requested."))
-            project._post_update(
+            return project._post_update(
                 _("%(sku)s: changes requested on %(stage)s", sku=project._label(),
                   stage=self.pipeline_stage_id.name),
                 "at_risk",
@@ -150,9 +135,11 @@ class ProjectTask(models.Model):
                     _("Reason:"), reason,
                 ),
             )
-            return True
-        previous = stages[stages.ids.index(self.pipeline_stage_id.id) - 1]
+        previous = target or stages[stages.ids.index(self.pipeline_stage_id.id) - 1]
         project.action_send_back(previous, reason)
+        update = self.env["urbana.sku.handover"].sudo().search(
+            [("project_id", "=", project.id)], order="id desc", limit=1
+        ).update_id
         # Also raise an activity on the SKU itself, for the previous stage's
         # assignees, or the project manager when nobody is assigned.
         assignees = project._task_for(previous).user_ids or project.user_id
@@ -164,4 +151,4 @@ class ProjectTask(models.Model):
                 note=reason,
                 user_id=user.id,
             )
-        return True
+        return update

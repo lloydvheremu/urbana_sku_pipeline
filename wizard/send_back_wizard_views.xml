@@ -40,14 +40,25 @@
         <field name="name">urbana.request.changes.wizard.form</field>
         <field name="model">urbana.request.changes.wizard</field>
         <field name="arch" type="xml">
-            <form string="Request Changes">
+            <form string="Send Back">
+                <field name="update_id" invisible="1"/>
+                <field name="allowed_stage_ids" invisible="1"/>
                 <group>
                     <field name="task_id"/>
-                    <field name="reason" placeholder="What needs to change? The previous stage's owner will see this."/>
+                    <field name="target_stage_id" options="{'no_create': True, 'no_open': True}"
+                           invisible="not allowed_stage_ids" readonly="update_id"/>
+                    <field name="reason" readonly="update_id"
+                           placeholder="What needs to change? The previous stage's owner will see this."/>
                 </group>
                 <footer>
-                    <button name="action_confirm" type="object" string="Request Changes" class="btn-primary" data-hotkey="q"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                    <button name="action_confirm" type="object" string="Send Back" class="btn-primary"
+                            data-hotkey="q" invisible="update_id"/>
+                    <button name="action_view_update" type="object" string="View Update" class="btn-primary"
+                            data-hotkey="q" invisible="not update_id"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"
+                            invisible="update_id"/>
+                    <button string="Close" class="btn-secondary" special="cancel" data-hotkey="x"
+                            invisible="not update_id"/>
                 </footer>
             </form>
         </field>
