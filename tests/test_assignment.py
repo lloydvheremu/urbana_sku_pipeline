@@ -20,6 +20,27 @@ class TestAssignment(PipelineCase):
         task.write({"user_ids": [Command.set(self.worker.ids)]})
         self.assertEqual(task.user_ids, self.worker)
 
+    def test_the_project_manager_owns_unassigned_stage_tasks(self):
+        sku = self.Project.create({
+            "name": "U110 Shelter", "sku_code": "U110", "is_sku": True, "user_id": self.manager.id,
+        })
+        self.assertEqual(len(sku.tasks), 6)
+        for task in sku.tasks:
+            self.assertEqual(task.user_ids, self.manager)
+
+    def test_no_project_manager_means_no_default_owner(self):
+        sku = self._make_sku(code="U111", assign=False)
+        self.assertFalse(sku.tasks.mapped("user_ids"))
+
+    def test_the_manager_is_skipped_for_a_stage_with_another_job(self):
+        drafter = self.env["hr.job"].create({"name": "Drafter"})
+        self.s_prelim.job_id = drafter
+        sku = self.Project.create({
+            "name": "U112 Shelter", "sku_code": "U112", "is_sku": True, "user_id": self.manager.id,
+        })
+        self.assertFalse(self._task(sku, self.s_prelim).user_ids)
+        self.assertEqual(self._task(sku, self.s_ga).user_ids, self.manager)
+
     def test_a_stage_without_a_job_accepts_anyone(self):
         self.assertFalse(self.s_ga.job_id)
         sku = self._make_sku()

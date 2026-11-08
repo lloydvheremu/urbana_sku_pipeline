@@ -187,12 +187,19 @@ class ProjectProject(models.Model):
         stages = self._pipeline_stages()
         vals_list = []
         for project in self:
+            manager = project.user_id
             for stage in stages:
+                # Until someone is assigned, the project manager owns the task,
+                # so a hand over is never stuck on an empty assignee. A stage
+                # with a job position still needs a matching person.
+                fits = manager and (
+                    not stage.job_id or manager.sudo().employee_id.job_id == stage.job_id
+                )
                 vals_list.append({
                     "name": f"{project._label()} - {stage.name}",
                     "project_id": project.id,
                     "pipeline_stage_id": stage.id,
-                    "user_ids": [Command.clear()],  # do not default to the creator
+                    "user_ids": [Command.set(manager.ids if fits else [])],
                     "state": "01_in_progress" if stage == project.pipeline_stage_id else "04_waiting_normal",
                 })
         self.env["project.task"].with_context(**{INTERNAL: True}).create(vals_list)

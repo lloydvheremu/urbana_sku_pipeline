@@ -34,7 +34,10 @@ class PipelineCase(TransactionCase):
 
     # -- helpers ---------------------------------------------------------
     def _make_sku(self, code="U101", assign=True):
-        sku = self.Project.create({"name": f"{code} Shelter", "sku_code": code, "is_sku": True})
+        vals = {"name": f"{code} Shelter", "sku_code": code, "is_sku": True}
+        if not assign:
+            vals["user_id"] = False  # no project manager, so no default owner either
+        sku = self.Project.create(vals)
         if assign:
             sku.tasks.write({"user_ids": [Command.set(self.worker.ids)]})
         return sku
