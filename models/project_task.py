@@ -35,6 +35,16 @@ class ProjectTask(models.Model):
                 task.pipeline_stage_id and task.project_id.pipeline_stage_id == task.pipeline_stage_id
             )
 
+    @api.depends("pipeline_stage_id", "is_approved", "project_id.pipeline_stage_id")
+    def _compute_can_review(self):
+        for task in self:
+            stage = task.pipeline_stage_id
+            task.can_review = bool(
+                stage.requires_approval
+                and not task.is_approved
+                and task.project_id.pipeline_stage_id == stage
+            )
+
     def action_open_handover_wizard(self):
         self.ensure_one()
         return self.project_id.action_open_handover_wizard()

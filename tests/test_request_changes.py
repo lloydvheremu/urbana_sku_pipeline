@@ -14,6 +14,17 @@ class TestRequestChanges(PipelineCase):
         task = self._task(self.sku, stage).with_user(user or self.reviewer)
         return task._request_changes(reason)
 
+    def test_task_form_fields_load(self):
+        """Reading the computed fields the task form uses must not fail (it did once)."""
+        self._advance_to(self.sku, self.s_shop)
+        shop = self._task(self.sku, self.s_shop)
+        data = shop.with_user(self.reviewer).read(["can_review", "is_current_stage", "project_is_last_stage"])[0]
+        self.assertTrue(data["can_review"])
+        self.assertTrue(data["is_current_stage"])
+        shop.with_user(self.reviewer).action_approve()
+        self.assertFalse(shop.can_review)
+        self.assertFalse(self._task(self.sku, self.s_prelim).can_review)
+
     def test_later_stage_is_sent_back_one_stage(self):
         self._advance_to(self.sku, self.s_ga)
         self._task(self.sku, self.s_prelim).write({"user_ids": [(6, 0, self.worker.ids)]})
