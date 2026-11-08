@@ -47,6 +47,24 @@ class TestSecurity(PipelineCase):
         self.assertEqual(shop.state, "03_approved")
         self.assertEqual(self._task(self.sku, self.s_ga).state, "1_done")
 
+    def test_stage_task_cannot_be_deleted(self):
+        shop = self._task(self.sku, self.s_shop)
+        for user in (self.worker, self.reviewer, self.manager):
+            with self.assertRaisesMessage(UserError, "cannot be deleted"):
+                shop.with_user(user).unlink()
+        self.assertTrue(shop.exists())
+
+    def test_plain_tasks_can_still_be_deleted(self):
+        plain = self.env["project.task"].create({"name": "plain", "project_id": self.sku.id})
+        plain.with_user(self.manager).unlink()
+        self.assertFalse(plain.exists())
+
+    def test_a_manager_can_delete_the_whole_sku(self):
+        self.env["account.analytic.line"].search([("project_id", "=", self.sku.id)]).unlink()
+        task_ids = self.sku.tasks.ids
+        self.sku.with_user(self.manager).unlink()
+        self.assertFalse(self.env["project.task"].browse(task_ids).exists())
+
     def test_manual_updates_stay_free(self):
         update = self.env["project.update"].with_user(self.manager).create({
             "name": "manual", "project_id": self.sku.id, "status": "on_track",

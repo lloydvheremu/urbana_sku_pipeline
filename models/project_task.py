@@ -88,6 +88,17 @@ class ProjectTask(models.Model):
             )
         return super().write(vals)
 
+    def unlink(self):
+        if (
+            not self.env.su
+            and not self.env.context.get(INTERNAL)
+            and self.filtered("pipeline_stage_id")
+        ):
+            raise UserError(
+                _("A stage task cannot be deleted. It goes away when its SKU is deleted.")
+            )
+        return super().unlink()
+
     def _check_reviewer(self):
         user = self.env.user
         if not (self.env.su or user.has_group(REVIEWER_GROUP) or user.has_group(MANAGER_GROUP)):

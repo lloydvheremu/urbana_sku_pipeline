@@ -180,7 +180,8 @@ class ProjectProject(models.Model):
             self.env["urbana.sku.handover"].sudo().with_context(**{INTERNAL: True}).search(
                 [("project_id", "in", skus.ids)]
             ).unlink()
-        return super().unlink()
+        # Deleting a SKU deletes its stage tasks, which are otherwise protected.
+        return super(ProjectProject, self.with_context(**{INTERNAL: True})).unlink()
 
     def _create_pipeline_tasks(self):
         stages = self._pipeline_stages()
