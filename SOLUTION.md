@@ -27,7 +27,7 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 ## 2. How it works
 
 1. A manager creates a SKU (`is_sku`). The module creates one task per configured stage and puts the SKU in the first stage.
-2. The manager assigns an employee to each stage task. If the stage has a required job position, the assignee must hold it.
+2. The project manager owns every stage task until someone else is assigned, so a hand over is never stuck on an empty assignee. The manager then assigns an employee to each stage task. If the stage has a required job position, the assignee must hold it, and the manager is skipped for that stage when they do not.
 3. The assignee does the work, posts notes on the task and logs hours.
 4. Reviewers approve stages that need it. Approval is only possible for the stage the SKU is currently in.
 5. **Hand Over** checks approval, minimum hours and that the next stage has an assignee. It closes the task, moves the stage, writes a handover record, posts a project update and schedules an activity for the next assignee.
@@ -37,6 +37,8 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 9. **First stage.** There is no earlier stage to return to, so the target field is hidden. Only that task is reopened (Changes requested, approval cleared), a chatter line is posted and an at-risk project update is logged. No handover record or to-do is created.
 10. **Hand Over from the task.** The current stage's task also has a Hand Over button, calling the same project method as the SKU form.
 11. **Navigation.** SKUs have their own app (SKUs, Pipeline, Handovers, Configuration). Pipeline is a kanban of every stage task grouped by task state. The standard Projects views hide SKUs by default (a removable "Hide SKUs" filter). A Timesheets tab on the SKU form is shown only to admins in developer mode.
+12. **Images.** Each stage task and the SKU form have an **Images** page: a gallery of pictures with a caption, usually screenshots of the work. A picture belongs to a stage task and the SKU page shows those of every stage. Added from the SKU form, a picture defaults to the current stage's task.
+13. **What users cannot change directly.** Only the pipeline buttons move a SKU between stages, approve a stage, or set a stage task to done, approved or changes requested. A stage task cannot be deleted (it goes with its SKU) and a SKU has at most one task per stage (a database constraint). Other task states and plain tasks stay free.
 
 ## 3. Data model
 
@@ -44,7 +46,8 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 |---|---|
 | `urbana.pipeline.stage` | Configuration: order, required `hr.job`, `min_hours`, `requires_approval`, `export_ready`, `is_return_target` |
 | `project.project` (extended) | SKU: code, range, current stage, cleanup state, export readiness, Hubstaff project ID |
-| `project.task` (extended) | Stage task: stage, approval fields, output link, Hubstaff task ID |
+| `project.task` (extended) | Stage task: stage, approval fields, output link, Hubstaff task ID. Unique per project and stage, not deletable, locked states |
+| `urbana.sku.image` | A picture with a caption, kept with a SKU and one of its stage tasks |
 | `urbana.sku.handover` | Immutable log of every hand over and send back, with hours at that moment |
 | `project.update` (extended) | `handover_id` links the automatic update to its handover |
 | `account.analytic.line` (extended) | `hubstaff_entry_id` (unique) and `source` |
@@ -64,6 +67,8 @@ That single rule gives sequential movement, the Fabrication gate (Shop Drawings 
 8. After a send back, hours already logged on reset tasks still count toward their minimum.
 9. Only a project manager can send a SKU back from the last stage.
 10. The linked Urbana pages describe only the render team's slice of the pipeline. The other stages are my reasoning.
+11. The project manager is a sensible first owner of every stage task. Odoo defaults the project manager to the user who creates the SKU.
+12. Images are screenshots and other working pictures. They sit next to the task and do not replace progress shown on the Urbana website.
 
 ## 5. Trade-offs and alternatives
 
@@ -101,13 +106,21 @@ A sync job would, per Hubstaff time entry: find the stage task by `hubstaff_task
 
 ## 8. Known limitations
 
-- The integrity constraint runs when `pipeline_stage_id` changes. Reopening an earlier task afterwards is not re-checked. Task approval and stage fields are protected from direct edits to limit this.
+- The integrity constraint runs when `pipeline_stage_id` changes. Reopening an earlier task afterwards is not re-checked. Task approval and stage fields, and the done, approved and changes requested states, are protected from direct edits to limit this. Setting a task back to In Progress is still allowed, so a user can reopen a finished task (including the last one, which un-completes the SKU).
 - Gates are configuration driven. A manager who turns off `requires_approval` weakens them on purpose.
 - Manual hours can be typed to satisfy the minimum until the Hubstaff sync exists.
 - A SKU with logged hours cannot be deleted. This is Odoo's own protection of timesheets, so archive the SKU instead.
 - `project.task_ids` hides closed tasks, so the module uses the unfiltered `tasks` field everywhere.
 - Task `Waiting` states are set by hand and Odoo can recompute them if a task's native stage changes. Native task dependencies would avoid this and are untested here.
 - Stages are looked up by order, so reordering stages in the configuration of a SKU already in progress is not supported.
+- After changes are requested, nothing forces new hours or a note: the minimum hours logged before the rejection still count, so a drafter can hand straight over again.
+- To-dos created by a hand over or send back are not closed when the SKU moves on, so they pile up, and a send back can leave a person with duplicates (one on the task, one on the project).
+- Completing a SKU can be repeated and posts another update each time.
+- Requesting changes on the first stage can be repeated, and each request adds an at-risk update. It tells nobody: there is no to-do, no handover record, and the chatter line does not include the reason.
+- Any project user can assign people to a stage task.
+- A send back records the hours of the stage it left, so a send back from Technical Drawing Review shows 0.0.
+- Fabrication needs 0 hours and completion does not require cleanup to be done. `export_ready` is true from GA Drawings onward, before any approval. Both follow the configuration and may need revisiting.
+- A non-reviewer who opens a send back wizard through the API gets Odoo's generic access error instead of a module message.
 
 ## 9. Testing
 
@@ -120,16 +133,41 @@ direnv exec . python odoo-bin -d urbana_pipeline_test -i urbana_sku_pipeline \
     --http-port=8070 --without-demo=all
 ```
 
-Use `-u` instead of `-i` on later runs. The expected result is `0 failed, 0 error(s)`.
+Use `-u` instead of `-i` on later runs. The expected result is `0 failed, 0 error(s)` (84 tests at the time of writing).
 
 What the tests cover:
 - **Gates:** one task per stage, hand over writes a handover and an update, minimum hours, assignee required, approval required, no skipping through `write`, Fabrication blocked without approved renders and shop drawings by every route, plain stage writes blocked for users, full run and completion.
 - **Send back:** reason required, valid targets only, approvals reset from the target onward and kept before it, the log and the at-risk update, hours kept, gates apply again afterwards, re-approval required, who may send back.
 - **Assignment:** job position match, protected fields, who may approve and hand over.
-- **Security:** handovers and generated updates are immutable, wizards, configuration access, cleanup buttons.
+- **Security:** handovers and generated updates are immutable, wizards, configuration access, cleanup buttons, locked task states, stage tasks that cannot be deleted (while a whole SKU still can be), one task per stage, and the task form's computed fields loading.
+- **Assignment defaults:** the project manager owns unassigned stage tasks, nobody does when there is no project manager, and the manager is skipped for a stage with another job position.
+- **Images** (`tests/test_images.py`): an image added on a task or on the SKU, the default task, an earlier stage task, a task from another SKU rejected, deleting, and both forms showing the Images page.
 - **Task Send Back** (`tests/test_request_changes.py`): default and allowed targets, reason required, non-reviewers blocked, current stage only, non-return-target error, first stage behaviour, project activity (assignee and project manager fallback), the View Update link, gates applying again after the drafter hands over, and Hand Over delegating to the project.
 - **Hubstaff fields:** duplicate entry rejected, synced hours count toward the minimum.
 
 Sanity check: disabling the integrity constraint makes five of these tests fail.
 
 To try it by hand: install the module, open Project > SKUs, create a SKU, assign an employee to each stage task (Stage Tasks tab), log a timesheet line on the task, then use Hand Over. Approve Shop Drawings and Rendering as a user in the Reviewer group, and try Send Back from Technical Drawing Review.
+
+For setup and day-to-day use, see `readme/CONFIGURE.md` and `readme/USAGE.md`.
+
+## 10. Agent-driven testing (2026-11-08)
+
+Besides the unit tests, three AI agents were set loose on a throwaway database (`urbana_agent_test`) with one login per role, using the same actions the buttons call over XML-RPC. No code was changed during the run, and the findings were then triaged.
+
+| Agent | What it did |
+|---|---|
+| Happy path | Carried one SKU through all six stages, with each role logging hours and notes, getting approvals and handing over, then completed it |
+| Request changes | Requested changes on the first stage, a middle stage and after approval, sent back more than one stage, and used the SKU-level send back, then reworked and advanced again |
+| Wrong moves | Tried 36 things that should be refused (no hours, no approval, workers approving, skipping stages, direct state and stage writes, deleting tasks, empty reasons) |
+
+The gates held: no stage was ever skipped, and the hours, approval, ownership and reason checks gave clear messages. The runs found these holes, **fixed afterwards** (commits after `48154de`):
+
+- a user could set any stage task to done, approved or changes requested (now locked),
+- a stage task could be deleted, which left the SKU stuck (now blocked),
+- a second task could be created for a stage, which blocked later hand overs (now one per stage),
+- Technical Drawing Review and Fabrication had no assignee, so the hand over into them failed until someone assigned a person (the project manager now owns them by default).
+
+The other findings are listed under Known limitations (rework not enforced, stale to-dos, repeatable completion, the silent first-stage request, open assignment). The runs went over the API, so they did not exercise the screens (buttons, wizards, banners). Those still need manual testing.
+
+Manual testing of the task form also found that it failed to load after the Send Back merge, because a computed field's method had been deleted. A test now reads the form's computed fields.
