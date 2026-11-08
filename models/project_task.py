@@ -30,6 +30,11 @@ class ProjectTask(models.Model):
     is_current_stage = fields.Boolean(compute="_compute_is_current_stage")
     project_is_last_stage = fields.Boolean(related="project_id.is_last_stage")
 
+    _stage_task_uniq = models.Constraint(
+        "UNIQUE(project_id, pipeline_stage_id)",
+        "A SKU can have only one task per pipeline stage.",
+    )
+
     @api.depends("pipeline_stage_id", "project_id.pipeline_stage_id")
     def _compute_is_current_stage(self):
         for task in self:

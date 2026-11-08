@@ -1,5 +1,8 @@
+from psycopg2 import IntegrityError
+
 from odoo.exceptions import UserError
 from odoo.tests import tagged
+from odoo.tools import mute_logger
 
 from .common import PipelineCase
 
@@ -53,6 +56,20 @@ class TestSecurity(PipelineCase):
             with self.assertRaisesMessage(UserError, "cannot be deleted"):
                 shop.with_user(user).unlink()
         self.assertTrue(shop.exists())
+
+    def test_a_sku_has_one_task_per_stage(self):
+        with mute_logger("odoo.sql_db"), self.assertRaises(IntegrityError):
+            self.env["project.task"].create({
+                "name": "second prelim",
+                "project_id": self.sku.id,
+                "pipeline_stage_id": self.s_prelim.id,
+            })
+
+    def test_other_skus_and_plain_tasks_are_not_affected(self):
+        other = self._make_sku(code="U102")
+        self.assertEqual(len(other.tasks), 6)
+        for name in ("one", "two"):
+            self.env["project.task"].create({"name": name, "project_id": self.sku.id})
 
     def test_plain_tasks_can_still_be_deleted(self):
         plain = self.env["project.task"].create({"name": "plain", "project_id": self.sku.id})
