@@ -104,6 +104,7 @@ The module now does what the brief asks: a SKU moves through the six stages with
 - how hours count after a send back (8), and who may send a SKU back from the last stage (9),
 - who owns each stage task and which job positions the stages require (3 and 11),
 - the Hubstaff time sync, which is designed in section 6 but not built until the hours rules are confirmed.
+- Where do the SKU come from and what happens after fabrication
 
 ## 8. Known limitations
 
