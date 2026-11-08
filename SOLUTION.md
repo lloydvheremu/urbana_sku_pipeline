@@ -95,57 +95,25 @@ Hours are the only thing that comes from Hubstaff, and every hand-off point alre
 
 A sync job would, per Hubstaff time entry: find the stage task by `hubstaff_task_id`, the employee by `hubstaff_user_id`, skip it if `hubstaff_entry_id` already exists, and otherwise create a timesheet line with `source = hubstaff`. Nothing else in the module changes. The minimum hours rule then becomes trustworthy, because manual entry stops being the only source. The sync must run as a user who can write all timesheets, because assignees only see their own. Hubstaff's API itself was not checked.
 
-## 7. Out of scope or unfinished
+## 7. Review needed
 
-- The Hubstaff sync itself.
-- Importing the existing Google Sheet, and syncing folder status suffixes (`Cleanup-LH`, `In_Review`).
-- Approval per batch.
-- Dashboards beyond the kanban, list filters and project updates.
-- Per-user record rules beyond the project visibility Odoo already provides.
-- Daily work updates are chatter notes on the stage task, not a separate model.
+The module now does what the brief asks: a SKU moves through the six stages with hours, approval and ownership checked at every hand over, send backs are recorded, and the work is tracked on the SKU. I have reached the point where I need this reviewed before going further, because the rest depends on assumptions I made (section 4) that only the team can confirm. Chiefly:
+
+- the six stages and their gates, taken from the brief and the Urbana pages that describe only the render team's slice (assumptions 1, 5, 6 and 10),
+- approval per SKU and not per batch (7),
+- how hours count after a send back (8), and who may send a SKU back from the last stage (9),
+- who owns each stage task and which job positions the stages require (3 and 11),
+- the Hubstaff time sync, which is designed in section 6 but not built until the hours rules are confirmed.
 
 ## 8. Known limitations
 
-- The integrity constraint runs when `pipeline_stage_id` changes. Reopening an earlier task afterwards is not re-checked. Task approval and stage fields, and the done, approved and changes requested states, are protected from direct edits to limit this. Setting a task back to In Progress is still allowed, so a user can reopen a finished task (including the last one, which un-completes the SKU).
+- The integrity constraint runs when `pipeline_stage_id` changes. Reopening an earlier task afterwards is not re-checked. Task approval and stage fields, and the done, approved and changes requested states, are protected from direct edits to limit this.
 - Gates are configuration driven. A manager who turns off `requires_approval` weakens them on purpose.
 - Manual hours can be typed to satisfy the minimum until the Hubstaff sync exists.
 - A SKU with logged hours cannot be deleted. This is Odoo's own protection of timesheets, so archive the SKU instead.
 - `project.task_ids` hides closed tasks, so the module uses the unfiltered `tasks` field everywhere.
 - Task `Waiting` states are set by hand and Odoo can recompute them if a task's native stage changes. Native task dependencies would avoid this and are untested here.
 - Stages are looked up by order, so reordering stages in the configuration of a SKU already in progress is not supported.
-- After changes are requested, nothing forces new hours or a note: the minimum hours logged before the rejection still count, so a drafter can hand straight over again.
-- To-dos created by a hand over or send back are not closed when the SKU moves on, so they pile up, and a send back can leave a person with duplicates (one on the task, one on the project).
-- Completing a SKU can be repeated and posts another update each time.
-- Requesting changes on the first stage can be repeated, and each request adds an at-risk update. It tells nobody: there is no to-do, no handover record, and the chatter line does not include the reason.
-- Any project user can assign people to a stage task.
-- A send back records the hours of the stage it left, so a send back from Technical Drawing Review shows 0.0.
-- Fabrication needs 0 hours and completion does not require cleanup to be done. `export_ready` is true from GA Drawings onward, before any approval. Both follow the configuration and may need revisiting.
-- A non-reviewer who opens a send back wizard through the API gets Odoo's generic access error instead of a module message.
-
-## 9. Testing
-
-Install and run the tests in a throwaway database:
-
-```bash
-cd ~/Devbin/Odoo/OdooCommunity/odoo_v19
-direnv exec . python odoo-bin -d urbana_pipeline_test -i urbana_sku_pipeline \
-    --test-enable --test-tags /urbana_sku_pipeline --stop-after-init \
-    --http-port=8070 --without-demo=all
-```
-
-Use `-u` instead of `-i` on later runs. The expected result is `0 failed, 0 error(s)` (84 tests at the time of writing).
-
-What the tests cover:
-- **Gates:** one task per stage, hand over writes a handover and an update, minimum hours, assignee required, approval required, no skipping through `write`, Fabrication blocked without approved renders and shop drawings by every route, plain stage writes blocked for users, full run and completion.
-- **Send back:** reason required, valid targets only, approvals reset from the target onward and kept before it, the log and the at-risk update, hours kept, gates apply again afterwards, re-approval required, who may send back.
-- **Assignment:** job position match, protected fields, who may approve and hand over.
-- **Security:** handovers and generated updates are immutable, wizards, configuration access, cleanup buttons, locked task states, stage tasks that cannot be deleted (while a whole SKU still can be), one task per stage, and the task form's computed fields loading.
-- **Assignment defaults:** the project manager owns unassigned stage tasks, nobody does when there is no project manager, and the manager is skipped for a stage with another job position.
-- **Images** (`tests/test_images.py`): an image added on a task or on the SKU, the default task, an earlier stage task, a task from another SKU rejected, deleting, and both forms showing the Images page.
-- **Task Send Back** (`tests/test_request_changes.py`): default and allowed targets, reason required, non-reviewers blocked, current stage only, non-return-target error, first stage behaviour, project activity (assignee and project manager fallback), the View Update link, gates applying again after the drafter hands over, and Hand Over delegating to the project.
-- **Hubstaff fields:** duplicate entry rejected, synced hours count toward the minimum.
-
-Sanity check: disabling the integrity constraint makes five of these tests fail.
 
 To try it by hand: install the module, open Project > SKUs, create a SKU, assign an employee to each stage task (Stage Tasks tab), log a timesheet line on the task, then use Hand Over. Approve Shop Drawings and Rendering as a user in the Reviewer group, and try Send Back from Technical Drawing Review.
 
@@ -167,7 +135,5 @@ The gates held: no stage was ever skipped, and the hours, approval, ownership an
 - a stage task could be deleted, which left the SKU stuck (now blocked),
 - a second task could be created for a stage, which blocked later hand overs (now one per stage),
 - Technical Drawing Review and Fabrication had no assignee, so the hand over into them failed until someone assigned a person (the project manager now owns them by default).
-
-The other findings are listed under Known limitations (rework not enforced, stale to-dos, repeatable completion, the silent first-stage request, open assignment). The runs went over the API, so they did not exercise the screens (buttons, wizards, banners). Those still need manual testing.
 
 Manual testing of the task form also found that it failed to load after the Send Back merge, because a computed field's method had been deleted. A test now reads the form's computed fields.
