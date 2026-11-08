@@ -25,6 +25,28 @@ class TestSecurity(PipelineCase):
         with self.assertRaises(UserError):
             update.with_user(self.manager).unlink()
 
+    def test_stage_task_state_cannot_be_set_directly(self):
+        shop = self._task(self.sku, self.s_shop)
+        for user in (self.worker, self.reviewer, self.manager):
+            for state in ("1_done", "03_approved", "02_changes_requested"):
+                with self.assertRaisesMessage(UserError, "pipeline buttons"):
+                    shop.with_user(user).write({"state": state})
+        self.assertEqual(shop.state, "04_waiting_normal")
+
+    def test_other_task_states_and_plain_tasks_stay_free(self):
+        shop = self._task(self.sku, self.s_shop)
+        shop.with_user(self.worker).write({"state": "04_waiting_normal"})
+        plain = self.env["project.task"].create({"name": "plain", "project_id": self.sku.id})
+        plain.with_user(self.worker).write({"state": "1_done"})
+        self.assertEqual(plain.state, "1_done")
+
+    def test_buttons_still_set_the_locked_states(self):
+        self._complete_stage(self.sku)  # GA -> Shop Drawings as the worker's hand over
+        shop = self._task(self.sku, self.s_shop)
+        shop.with_user(self.reviewer).action_approve()
+        self.assertEqual(shop.state, "03_approved")
+        self.assertEqual(self._task(self.sku, self.s_ga).state, "1_done")
+
     def test_manual_updates_stay_free(self):
         update = self.env["project.update"].with_user(self.manager).create({
             "name": "manual", "project_id": self.sku.id, "status": "on_track",

@@ -261,8 +261,8 @@ class ProjectProject(models.Model):
 
         # Project users cannot write projects, so after our own permission
         # checks the stage move runs privileged.
-        current_task.write({"state": DONE})
-        next_task.write({"state": "01_in_progress"})
+        current_task.with_context(**{INTERNAL: True}).write({"state": DONE})
+        next_task.with_context(**{INTERNAL: True}).write({"state": "01_in_progress"})
         self.sudo().with_context(**{INTERNAL: True}).write({"pipeline_stage_id": next_stage.id})
         self.env["urbana.sku.handover"]._log(self, current_task, next_task, notes=notes)
         for user in next_task.user_ids:
@@ -298,7 +298,7 @@ class ProjectProject(models.Model):
         message = self._stage_blocker(last, task)
         if message:
             raise UserError(message)
-        task.write({"state": DONE})
+        task.with_context(**{INTERNAL: True}).write({"state": DONE})
         self._post_update(
             _("%(sku)s: %(stage)s complete", sku=self._label(), stage=last.name),
             "done",

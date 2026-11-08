@@ -6,6 +6,8 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from .project_project import INTERNAL, MANAGER_GROUP, REVIEWER_GROUP
 
 PROTECTED_FIELDS = {"pipeline_stage_id", "is_approved", "approved_by", "approved_date"}
+# A stage task only gets these states from the pipeline buttons.
+LOCKED_STATES = {"1_done", "03_approved", "02_changes_requested"}
 
 
 class ProjectTask(models.Model):
@@ -74,6 +76,15 @@ class ProjectTask(models.Model):
         ):
             raise UserError(
                 _("Stage and approval fields can only be changed with the pipeline buttons.")
+            )
+        if (
+            vals.get("state") in LOCKED_STATES
+            and not self.env.su
+            and not self.env.context.get(INTERNAL)
+            and self.filtered("pipeline_stage_id")
+        ):
+            raise UserError(
+                _("A stage task is marked done, approved or sent back with the pipeline buttons.")
             )
         return super().write(vals)
 
