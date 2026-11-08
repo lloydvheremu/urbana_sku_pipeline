@@ -69,6 +69,9 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Images" name="images">
+                            <field name="image_ids" mode="kanban" nolabel="1"/>
+                        </page>
                         <!-- Odoo ANDs base.group_no_one with other groups: admins in developer mode -->
                         <page string="Timesheets" name="timesheets"
                               groups="base.group_system,base.group_no_one">

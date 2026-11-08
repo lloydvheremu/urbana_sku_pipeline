@@ -19,6 +19,12 @@
                         groups="urbana_sku_pipeline.group_urbana_reviewer,project.group_project_manager"
                         invisible="not is_current_stage or state == '1_done'"/>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Images" name="urbana_images" invisible="not pipeline_stage_id">
+                    <field name="image_ids" mode="kanban" nolabel="1"
+                           context="{'default_project_id': project_id}"/>
+                </page>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <group string="SKU Pipeline" invisible="not pipeline_stage_id">
                     <group>

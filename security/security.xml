@@ -22,4 +22,11 @@
         <field name="model_id" ref="model_urbana_sku_handover"/>
         <field name="domain_force">[('project_id', 'any', [])]</field>
     </record>
+
+    <!-- Images follow the visibility of the project they belong to. -->
+    <record id="urbana_sku_image_project_visibility" model="ir.rule">
+        <field name="name">SKU image: follow project visibility</field>
+        <field name="model_id" ref="model_urbana_sku_image"/>
+        <field name="domain_force">[('project_id', 'any', [])]</field>
+    </record>
 </odoo>

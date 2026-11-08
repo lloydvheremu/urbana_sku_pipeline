@@ -29,6 +29,7 @@ class ProjectTask(models.Model):
     can_review = fields.Boolean(compute="_compute_can_review")
     is_current_stage = fields.Boolean(compute="_compute_is_current_stage")
     project_is_last_stage = fields.Boolean(related="project_id.is_last_stage")
+    image_ids = fields.One2many("urbana.sku.image", "task_id", string="Images")
 
     _stage_task_uniq = models.Constraint(
         "UNIQUE(project_id, pipeline_stage_id)",

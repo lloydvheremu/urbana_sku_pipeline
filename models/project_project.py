@@ -48,6 +48,7 @@ class ProjectProject(models.Model):
     is_first_stage = fields.Boolean(compute="_compute_stage_flags")
     is_completed = fields.Boolean(compute="_compute_stage_flags")
     handover_ids = fields.One2many("urbana.sku.handover", "project_id")
+    image_ids = fields.One2many("urbana.sku.image", "project_id", string="Images")
     hubstaff_project_id = fields.Char(string="Hubstaff Project ID", copy=False, index=True)
 
     _sku_code_uniq = models.Constraint(

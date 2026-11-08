@@ -19,6 +19,7 @@ lines, entered manually for now and written by a Hubstaff sync later.
         "data/pipeline_stage_data.xml",
         "wizard/send_back_wizard_views.xml",
         "views/pipeline_stage_views.xml",
+        "views/image_views.xml",
         "views/project_views.xml",
         "views/task_views.xml",
         "views/handover_views.xml",
